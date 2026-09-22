@@ -1,0 +1,25 @@
+[Unit]
+Description=TRENCHNET opt-in Telegram wallet alerts
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/trenchnet-bot
+EnvironmentFile=/etc/trenchnet-bot.env
+Environment=BOT_DB_PATH=/var/lib/trenchnet-bot/notifications.sqlite
+StateDirectory=trenchnet-bot
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 /opt/trenchnet-bot/telegram_bot.py
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

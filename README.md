@@ -73,6 +73,12 @@ Inference API в приложении отсутствует. Наличие к�
 
 Все API read-only; пользовательские адреса проходят проверку base58/32-byte. Внешние URL не принимаются. Есть ограничение ответа upstream, таймауты, bounded cache/concurrency, заголовки CSP и запрет доступа к data/source-файлам через static server.
 
+## Telegram-уведомления
+
+Отдельный read-only worker: `telegram_bot.py`. Статус: реализация и локальные проверки; **не подключён к Telegram и не запущен** без отдельного токена TRENCHNET. Документация: [docs/telegram-bot.md](docs/telegram-bot.md). Сравнение с референсом и границы: [docs/bot-reference-scope.md](docs/bot-reference-scope.md).
+
+`ops/trenchnet-bot.service` — проверенный systemd-шаблон, не активированный сервис. Он не включает бота в существующий Docker-образ и не продлевает срок хостинга сайта.
+
 ## Следующие интеграции
 
 1. Более полная история отслеживаемых кошельков и учёт себестоимости при достаточных данных.
