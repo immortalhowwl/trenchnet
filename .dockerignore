@@ -1,5 +1,6 @@
 *
 !Dockerfile
+!boot.py
 !server.py
 !collector.py
 !analytics.py
