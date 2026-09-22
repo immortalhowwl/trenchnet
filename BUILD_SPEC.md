@@ -1,0 +1,20 @@
+# TRENCHNET — implementation scope
+
+Owner: Logics. Intended canonical domain trenchnet.app (bought at Name.com, not connected yet). Reference: https://fomoradar.app and cvxv666/fomo-robinhood-radar. Build a real read-only Solana/Pump observation app, not an auto-trader. English interface.
+
+First release: radar of actual publicly fetched markets and observed Pump trades; address search; token dossier with wallet activity and receipt links; trader observations (not falsely profitable rankings); wallet-token graph; deterministic decision journal with evidence. Astra/Jev integrations explicitly disconnected unless separately configured. No paid API use, wallet signing, deployment spending, fabricated data, transfers treated as sales, or fabricated PnL.
+
+Architecture: Python3 standard-library ThreadingHTTPServer + SQLite; plain HTML/CSS/JS. Worker collector writes SQLite; HTTP serves read-only derived JSON. No public mutation endpoint. Search reads bounded allowlisted upstream providers with rate limiting/cache.
+
+Files owned by parent: server.py, database.py if needed, README.md, Dockerfile, deploy/packaging, integration tests.
+Worker A owns collector.py, analytics.py, tests/test_collector.py, tests/test_analytics.py. Worker B owns web/index.html, web/app.js, web/style.css, web/icon.svg, tests/frontend*.
+
+Contract: collector.py defines collect_once(db_path) returning summary and initializes required tables; analytics.py defines snapshot(db_path) returning below JSON. Standard library preferred (requests permitted only if installed; production must not require it). Use sqlite concurrency short transactions. Parent calls collector every 90s outside HTTP.
+
+GET /api/snapshot -> {version:'trenchnet-v1', updatedAt: ISO_UTC|null, status:{collector:'ok'|'partial'|'error'|'starting',message:string,models:{astra:'not_connected',jev:'not_connected'},coverage:string}, markets:[{address,symbol,name,priceUsd,marketCap,liquidityUsd,volume24h,change24h,pairUrl,imageUrl|null,createdAt:ISO|null,source:'DexScreener',fetchedAt:ISO}], trades:[{id,signature,wallet,mint,side:'buy'|'sell',tokenAmount:number,solAmount:number|null,timestamp:ISO,source,explorerUrl,verified:boolean}], traders:[{address,buys,sells,tokens:number,lastSeen:ISO,summary,historyComplete:false,pnl:null}], graph:{nodes:[{id,type:'wallet'|'token',label}],edges:[{source,target,buys,sells,firstSeen,lastSeen}]}, decisions:[{id,timestamp,mint,kind:'FIRST_SEEN'|'CO_BUY'|'SELL_OBSERVED',summary,evidence:[tradeIds],engine:'rules',rulesVersion:'v1'}]}
+
+GET /api/token?address=BASE58 -> {address,market:market|null,trades:[],traders:[],decisions:[],coverage:string,error?:string}. Parent creates this from snapshot plus bounded Dex market lookup if not known. /api/wallet?address=BASE58 -> {address,trades:[],profile:trader|null,coverage}. Invalid addresses -> 400, unknown ->200 empty explanatory response. /api/health -> status/version. /api/export -> same as snapshot attachment.
+
+Frontend must never invent rows. Empty states explain actual coverage; tabs Radar / Traders / Network / Journal / Method. Radar subfilters Markets / Signals / Fresh / Exits; market-only rows never called wallet signals. Filter, sort, address search, details sidepanel/modal with close/Escape, copy CA, external market/explorer links, graph selection, local watchlist (localStorage), polling with no overlapping requests and selection retention. Skeleton loading then honest status; no fake AI outputs. Can use 'Rules-based summary' and 'AI connections not configured' in Method. UI should feel clean and premium: black/off-black, mint accent, thin square borders, restrained orange warning, generous headline and original network graphic labelled schematic (no invented telemetry). Dense readable rows below. Responsive phone support.
+
+Tests: TDD red/green for vertical slices, provenance constraints, invalid address, no transfer-as-trade, raw receipt validation, deterministic decisions, graph overlaps, graceful upstream error, escaping untrusted labels. UI no secret or arbitrary HTML insertion from upstream. No paid services or telemetry. Public API intentionally reads only bounded public data.

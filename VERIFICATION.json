@@ -1,0 +1,19 @@
+{
+  "url": "https://proceedings-spoke-durham-automated.trycloudflare.com",
+  "snapshotUpdatedAt": "2026-09-22T02:02:22.867323Z",
+  "counts": {
+    "markets": 17,
+    "trades": 61,
+    "traders": 46,
+    "decisions": 76
+  },
+  "collectorStatus": "partial",
+  "unitTests": {
+    "python": 16,
+    "javascript": 4
+  },
+  "browserChecks": "passed on public HTTPS origin; watchlist, token/wallet drawers, graph drilldown, receipt links, mobile 360/375/390px, export, zero JS errors",
+  "independentRPCReceiptVerified": "2Ean2aX8vYvZkUMMQDy2py2sZUzsQDuKbasraVVUSUV7iCZFiCvK2AQKFV7r715Q33z9E62vM8eSgDtBaqXTdhT7",
+  "hosting": "temporary process-dependent preview; no guaranteed expiry or uptime; custom domain not attached",
+  "models": "Astra and Jev not connected; rules only"
+}

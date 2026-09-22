@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+data/
+.tmp
+node_modules/
+.env
+.env.*
+node_modules/
+.playwright/
+.railway/

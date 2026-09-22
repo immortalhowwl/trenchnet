@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!server.py
+!collector.py
+!analytics.py
+!web/
+!web/**

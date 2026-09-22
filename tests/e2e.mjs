@@ -1,0 +1,60 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+const base=process.env.FRONTEND_URL||'http://127.0.0.1:8787';
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[]; page.on('pageerror', e=>errors.push(e.message));
+const shots=process.env.HERMES_TASK_TMP;
+try {
+ await page.goto(base);
+ await page.waitForFunction(()=>document.querySelectorAll('#content tbody tr').length>0);
+ await page.getByRole('button',{name:/Add to watchlist/}).first().click();
+ assert.equal(await page.locator('#watch-count').textContent(),'1');
+ await page.reload();await page.waitForFunction(()=>document.querySelectorAll('#content tbody tr').length>0);
+ assert.equal(await page.locator('#watch-count').textContent(),'1');
+ await page.locator('#watch-filter').click();
+ assert.equal(await page.locator('#content tbody tr').count(),1);
+ await page.locator('#watch-filter').click();
+ await page.locator('#content tbody .token-button').first().click();
+ await page.waitForFunction(()=>document.querySelector('#detail-title').textContent!=='Loading dossier…');
+ assert.equal(await page.locator('#detail').evaluate(x=>x.open),true);
+ assert.ok(await page.locator('#detail-content').getByRole('link',{name:'Solscan ↗'}).getAttribute('href'));
+ await page.getByRole('button',{name:'Close details'}).click();
+ await page.getByRole('button',{name:'Traders',exact:true}).click();
+ assert.ok(await page.locator('#content tbody tr').count()>0);
+ await page.locator('#content .token-button').first().click();
+ await page.waitForFunction(()=>document.querySelector('#detail-title').textContent==='Observed wallet');
+ const buys=await page.locator('.metric strong').first().textContent();
+ assert.notEqual(buys,'—','Wallet profile must display real observed counts');
+ await page.getByRole('button',{name:'Close details'}).click();
+ await page.getByRole('button',{name:'Network',exact:true}).click();
+ assert.ok(await page.locator('.graph-node').count()>0);
+ await page.locator('.graph-node circle').first().click();
+ await page.waitForFunction(()=>document.querySelector('#detail-title').textContent!=='Loading dossier…');
+ await page.getByRole('button',{name:'Close details'}).click();
+ await page.getByRole('button',{name:'Journal',exact:true}).click();
+ assert.ok(await page.locator('.journal-entry').count()>0);
+ assert.ok((await page.locator('.journal-entry a').first().getAttribute('href')).startsWith('https://solscan.io/tx/'));
+ await page.getByRole('button',{name:'Method',exact:true}).click();
+ assert.match(await page.locator('#content').textContent(),/ASTRA \/ NOT CONNECTED/);
+ await page.getByRole('button',{name:'Radar',exact:true}).click();
+ await page.getByRole('button',{name:'Signals',exact:true}).click();
+ assert.ok(await page.locator('#content tbody tr').count()>0);
+ await page.getByRole('button',{name:'Markets',exact:true}).click();
+ await page.locator('#search').fill('<script>alert(1)</script>');
+ await page.getByRole('button',{name:'Inspect token'}).click();
+ assert.match(await page.locator('#feedback').textContent(),/valid Solana/);
+ await page.locator('#search').fill('');
+ await page.locator('#refresh').click();await page.waitForFunction(()=>!document.querySelector('#refresh').disabled);
+ if(shots){await mkdir(shots,{recursive:true});await page.screenshot({path:shots+'/trenchnet-desktop.png',fullPage:true});}
+ for(const width of [390,375,360]){
+  await page.setViewportSize({width,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${width}`);
+ }
+ if(shots)await page.screenshot({path:shots+'/trenchnet-mobile.png',fullPage:true});
+ const snapshot=await (await page.request.get(base+'/api/export')).json();
+ assert.ok(Array.isArray(snapshot.trades));
+ assert.deepEqual(errors,[]);
+ console.log('PASS: real data, watchlist persistence/filter, token drawer, wallet counts, network drill-down, journal receipts, model disclosure, filters, validation, refresh, desktop/360–390px layouts, export, zero JS errors');
+} finally {await browser.close();}
