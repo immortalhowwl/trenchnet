@@ -25,5 +25,6 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(result['version'], 'trenchnet-v1')
         self.assertEqual(result['status']['collector'], 'starting')
         self.assertEqual(result['trades'], [])
-        self.assertEqual(result['status']['models']['astra'], 'not_connected')
+        self.assertEqual(result['analysis'], {'engine':'rules','version':'v2','paidModels':False})
+        self.assertNotIn('models', result['status'])
         self.assertIsNone(result['updatedAt'])
