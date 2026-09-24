@@ -65,7 +65,7 @@ class Transport:
         self.cooldown = self.clock()+delay
 
     def telegram(self, method, payload):
-        if method not in ('sendMessage','getUpdates') or not re.fullmatch(r'[0-9]+:[A-Za-z0-9_-]+',self.token):
+        if method not in ('sendMessage','getUpdates','answerCallbackQuery') or not re.fullmatch(r'[0-9]+:[A-Za-z0-9_-]+',self.token):
             return None
         return self.request('https://api.telegram.org/bot'+self.token+'/'+method,payload,True)
 
@@ -80,11 +80,15 @@ class Transport:
                               'reply_markup':markup,'link_preview_options':{'is_disabled':True}})
         return bool(result and result.get('ok') is True)
 
+    def answer(self, callback_id):
+        result = self.telegram('answerCallbackQuery', {'callback_query_id':callback_id})
+        return bool(result and result.get('ok') is True)
+
     def snapshot(self):
         return self.request(SNAPSHOT_URL)
 
     def poll(self, offset):
-        result = self.telegram('getUpdates',{'offset':offset,'timeout':20,'limit':100,'allowed_updates':['message']})
+        result = self.telegram('getUpdates',{'offset':offset,'timeout':20,'limit':100,'allowed_updates':['message','callback_query']})
         return result.get('result',[]) if result and result.get('ok') is True else None
 
 
@@ -104,8 +108,11 @@ def worker_lock(path):
 ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 WELCOME = ('TRENCHNET monitors a retained limited Pump trade sample, not all wallet activity. '
            'No profit, ranking or complete-exit claims. Alerts start OFF for new chats. '
-           'Use /follow <Solana wallet>, then /subscribe. /stop pauses alerts. '
-           '/unfollow <wallet>, /status, /help. https://trenchnet.app')
+           'Tap Add wallet, send a trader wallet address, then tap Enable alerts. '
+           'Adding a wallet does not extend collector coverage. No wallet connection required. '
+           'Pause alerts retains your wallets. Recent trades is read-only. '
+           'Commands: /follow <wallet>, /unfollow <wallet>, /wallets, /subscribe, /stop, '
+           '/feed, /status, /cancel, /help. https://trenchnet.app')
 
 
 def base58(value, size):
@@ -163,7 +170,12 @@ def buttons(signature=None):
     row = [{'text':'TRENCHNET', 'url':'https://trenchnet.app'}]
     if signature and base58(signature,64):
         row.append({'text':'Solscan transaction','url':'https://solscan.io/tx/'+signature})
-    return {'inline_keyboard':[row]}
+    return {'inline_keyboard':[row,
+        [{'text':'Add wallet','callback_data':'add'}, {'text':'My wallets','callback_data':'wallets'}],
+        [{'text':'Remove wallet','callback_data':'remove'}],
+        [{'text':'Enable alerts','callback_data':'enable'}, {'text':'Pause alerts','callback_data':'pause'}],
+        [{'text':'Recent trades','callback_data':'feed'}, {'text':'Status','callback_data':'status'}],
+        [{'text':'Help','callback_data':'help'}, {'text':'Cancel','callback_data':'cancel'}]]}
 
 
 class Bot:
@@ -177,6 +189,7 @@ class Bot:
             CREATE TABLE IF NOT EXISTS follows(chat INTEGER, wallet TEXT COLLATE BINARY, since REAL, PRIMARY KEY(chat,wallet));
             CREATE TABLE IF NOT EXISTS delivered(chat INTEGER,event TEXT,PRIMARY KEY(chat,event));
             CREATE TABLE IF NOT EXISTS state(key TEXT PRIMARY KEY,value INTEGER);
+            CREATE TABLE IF NOT EXISTS inputs(chat INTEGER PRIMARY KEY, action TEXT NOT NULL);
         ''')
 
     def deliver(self, snapshot, send):
@@ -210,21 +223,50 @@ class Bot:
         row = self.db.execute("SELECT value FROM state WHERE key='offset'").fetchone()
         return row[0] if row else 0
 
-    def updates(self, updates, send):
+    def updates(self, updates, send, snapshot=None, answer=None):
         for update in updates[:100]:
             if not isinstance(update,dict) or type(update.get('update_id')) is not int:
                 continue
             uid=update['update_id']
             if uid < self.offset():
                 continue
-            msg=update.get('message',{})
-            chat=msg.get('chat',{})
-            reply=None
-            if chat.get('type') == 'private' and type(chat.get('id')) is int and isinstance(msg.get('text'),str):
-                reply=self.command(chat['id'],msg['text'][:4096])
+            msg = update.get('message')
+            msg = msg if isinstance(msg, dict) else {}
+            cb = update.get('callback_query')
+            text = msg.get('text')
+            if isinstance(cb, dict):
+                msg = cb.get('message')
+                msg = msg if isinstance(msg, dict) else {}
+                owner = cb.get('from')
+                owner = owner if isinstance(owner, dict) else {}
+                target = msg.get('chat')
+                target = target if isinstance(target, dict) else {}
+                actions = {'enable':'/subscribe', 'pause':'/stop', 'help':'/help',
+                           'status':'/status', 'wallets':'/wallets', 'add':'/follow',
+                           'remove':'/unfollow', 'cancel':'/cancel', 'feed':'/feed'}
+                data = cb.get('data')
+                text = actions.get(data) if isinstance(data, str) else None
+                if (type(owner.get('id')) is not int or owner.get('id') != target.get('id')):
+                    text = None
+            chat = msg.get('chat')
+            chat = chat if isinstance(chat, dict) else {}
+            reply = None
+            cmd = ''
+            if chat.get('type') == 'private' and type(chat.get('id')) is int and isinstance(text, str):
+                reply = self.command(chat['id'], text[:4096])
+                cmd = text.split()[0] if text.split() else ''
             with self.db:
                 self.db.execute("INSERT OR REPLACE INTO state VALUES('offset',?)",(uid+1,))
+            # Persist pause/preferences and offset before any acknowledgement I/O.
+            if isinstance(cb, dict) and answer and isinstance(cb.get('id'), str):
+                try:
+                    answer(cb['id'])
+                except Exception:
+                    pass
             if reply:
+                if cmd in ('/status', '/feed'):
+                    view = self.source_view(snapshot, feed=cmd == '/feed')
+                    reply = view if cmd == '/feed' else reply+'\n\n'+view
                 try:
                     send(chat['id'],reply,buttons())
                 except Exception:
@@ -233,6 +275,41 @@ class Bot:
     def state(self, chat):
         return self.db.execute('SELECT * FROM recipients WHERE chat=?', (chat,)).fetchone()
 
+    def source_view(self, snapshot, feed=False):
+        """Read-only view; the same conservative validation as alerts, no replay state."""
+        try:
+            data = snapshot() if snapshot else None
+        except Exception:
+            data = None
+        if not isinstance(data, dict) or data.get('version') != 'trenchnet-v1':
+            return 'Source unavailable. Fresh observations cannot be confirmed.'
+        stamp = instant(data.get('updatedAt'))
+        status = data.get('status')
+        collector = status.get('collector') if isinstance(status, dict) else None
+        collector = collector if collector in ('ok', 'partial', 'error', 'starting') else 'unknown'
+        timestamp = str(data.get('updatedAt'))[:80] if stamp is not None else 'unknown'
+        fresh = stamp is not None and 0 <= self.clock()-stamp <= 600
+        text = ('Source updated at: '+timestamp+'\nCollector: '+collector+
+                ('\nFreshness: within 10 minutes.' if fresh else '\nFreshness: stale or invalid timestamp.')+
+                '\nRetained limited Pump sample only; not full wallet activity or profit.')
+        if not fresh or collector != 'ok':
+            return text+'\nFeed and alerts suppressed until source is fresh and collector is ok.'
+        if not feed:
+            return text
+        trades = list(reversed(normalize(data, self.clock())))[:5]
+        if not trades:
+            return text+'\nNo eligible recent observed trades in this sample; not evidence of no on-chain activity.'
+        text += '\n\nRecent observed trades (all sampled wallets, up to 5):'
+        for trade in trades:
+            text += ('\n\n'+trade['side'].upper()+' observed at: '+trade['timestamp'][:80]+
+                     '\nWallet: '+trade['wallet']+'\nToken: '+trade['mint']+
+                     '\nhttps://solscan.io/tx/'+trade['signature'])
+        return text
+
+    def pending(self, chat):
+        row = self.db.execute('SELECT action FROM inputs WHERE chat=?', (chat,)).fetchone()
+        return row[0] if row else None
+
     def command(self, chat, text, private=True):
         if not private:
             return None
@@ -240,13 +317,25 @@ class Bot:
         cmd = parts[0] if parts else ''
         with self.db:
             self.db.execute('INSERT OR IGNORE INTO recipients(chat) VALUES(?)', (chat,))
+            if not cmd.startswith('/') and self.pending(chat):
+                cmd = self.pending(chat)
+                parts = [cmd] + parts
+            elif cmd.startswith('/'):
+                self.db.execute('DELETE FROM inputs WHERE chat=?', (chat,))
+            if cmd == '/cancel':
+                return 'Cancelled. Alert settings unchanged.'
             if cmd == '/stop':
                 self.db.execute('UPDATE recipients SET active=0 WHERE chat=?', (chat,))
                 return 'Alerts OFF. Your followed wallets are retained.'
             if cmd in ('/follow', '/unfollow'):
+                if len(parts) == 1:
+                    self.db.execute('INSERT OR REPLACE INTO inputs VALUES(?,?)', (chat,cmd))
+                    verb = 'follow' if cmd == '/follow' else 'remove'
+                    return 'Send the Solana wallet address to '+verb+'. Use /cancel to cancel.'
                 if len(parts) != 2 or not base58(parts[1], 32):
                     return 'Enter a valid 32-byte base58 Solana wallet.'
                 wallet = parts[1]
+                self.db.execute('DELETE FROM inputs WHERE chat=?', (chat,))
                 if cmd == '/unfollow':
                     self.db.execute('DELETE FROM follows WHERE chat=? AND wallet=?', (chat,wallet))
                     return 'Removed wallet.'
@@ -258,9 +347,9 @@ class Bot:
             if cmd == '/subscribe':
                 self.db.execute('UPDATE recipients SET active=1,since=? WHERE chat=? AND active=0', (self.clock(),chat))
                 return 'Alerts ON for new monitored buys and sells only.'
-            if cmd == '/status':
+            if cmd in ('/status', '/wallets'):
                 wallets = [r[0] for r in self.db.execute('SELECT wallet FROM follows WHERE chat=? ORDER BY wallet', (chat,))]
-                return ('Alerts ON' if self.state(chat)['active'] else 'Alerts OFF')+'\nFollowed wallets:\n'+'\n'.join(wallets)
+                return ('Alerts ON' if self.state(chat)['active'] else 'Alerts OFF')+'\nFollowed wallets:\n'+('\n'.join(wallets) if wallets else 'None yet. Tap Add wallet.')
         return WELCOME
 
 
@@ -292,7 +381,7 @@ def main():
                 if not isinstance(updates,list):
                     time.sleep(3)
                     continue  # Do not send alerts if pending stop commands cannot be fetched.
-                b.updates(updates,transport.send)
+                b.updates(updates,transport.send,snapshot=transport.snapshot,answer=transport.answer)
                 if len(updates)<100:
                     snapshot=transport.snapshot()
                     if snapshot:

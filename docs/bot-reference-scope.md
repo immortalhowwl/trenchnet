@@ -1,15 +1,29 @@
 # Notification scope and reference comparison
 
-Reference checked directly: https://fomoradar.app/pro and /about. Fomo Radar advertises multi-wallet burst and early-launch alerts, on-demand /hot /signals /fresh /exits, leaderboard lookup and daily digest. Its paid token/burn subscription mechanism and trader rating are not part of this implementation.
+Reference: https://fomoradar.app/pro and /about. FOMO Radar describes multi-wallet burst/early-launch alerts, on-demand feeds, leaderboard lookup and a digest. TRENCHNET does not claim feature parity, paid token/burn subscriptions or a profitability ranking.
 
-TRENCHNET first bot release sends observed purchases/sales for explicitly followed Solana wallets from the existing saved snapshot. It does not backfill or independently monitor a wallet merely because someone follows it. The underlying collector is a bounded Pump bonding-curve sample, not complete Solana coverage, a ranked cohort, or an instant feed. A follow may produce no notifications when that wallet is outside collection. Never market this as guaranteed tracking of arbitrary wallets.
+## Actual source contract
 
-No Jev, Astra or paid inference. No payments, signatures, wallet connection or automatic trades. No other project's Telegram credentials or subscriber databases are reused.
+TRENCHNET uses the site's retained Pump bonding-curve transaction sample. Following an address filters this existing collection; it does not start complete tracking of that wallet. A followed account outside the collection can produce no notifications. The read-only recent feed must distinguish retained observations from newly delivered alerts and show event timestamps.
 
-## Deployment gate
+Trade alerts require a healthy fresh source, verified supported event data and an event newer than boot, subscription and follow cutoffs. A `partial` or stale source suppresses notifications; opening a menu or viewing old observations must not bypass those gates. An account in an event is not proof of a profitable human trader or complete exit.
 
-A dedicated BotFather token is required before activation. Keep TRENCHNET_BOT_TOKEN in a root-owned 0600 /etc/trenchnet-bot.env file, never in Git, command arguments, or logs. The prepared ops/trenchnet-bot.service is a template, NOT an installed or enabled service. Its code installation path is /opt/trenchnet-bot, its independent StateDirectory is /var/lib/trenchnet-bot. Verify getMe matches the intended username and getWebhookInfo shows no conflicting webhook before starting one poller. Do not clear a webhook or reuse an existing token without confirmed ownership and explicit intent.
+No Jev, Astra, paid inference, wallet signatures, wallet connection or automatic trading. Other projects' Telegram credentials, workers and subscriber databases are not reused.
 
-Website hosting remains the separately agreed time-limited run. Bot delivery depends on that site being available; the service template does not extend the hosting period or budget. An unavailable/stale snapshot must not send replayed or fabricated events.
+## Established deployment
 
-Later: consented grouped-buy alerts from verified fresh events, simple read-only feed commands, improved collector coverage, and honest trader-history evaluation. These are not complete in the initial wallet-follow bot.
+Dedicated bot: https://t.me/trenchnetPF_bot
+
+- Existing systemd service: `trenchnet-bot.service`.
+- Installed source: `/opt/trenchnet-bot/telegram_bot.py`.
+- Root-owned credential: `/etc/trenchnet-bot.env`, mode 0600; never publish or print.
+- Persistent SQLite: `/var/lib/trenchnet-bot/notifications.sqlite`.
+- Independent source API: `https://trenchnet.app/api/snapshot`.
+
+Before upgrades, verify bot identity, no webhook conflict and a single poller. Back up SQLite with its backup API, preserve preferences/cutoffs/delivery history/update offset, then restart only this dedicated worker. Never create a second getUpdates poller for a smoke test. Keep source deployment, process health, Telegram message acceptance and genuine trade-alert delivery as separate evidence levels.
+
+Website hosting and the worker are separate services. Source outages or partial coverage are not cured by adding Telegram buttons. No new paid provider or hosting plan is provisioned by this bot UI update.
+
+## Remaining product work
+
+Grouped-buy burst notifications, trader-quality evaluation, complete arbitrary-wallet tracking and daily digests are separate features, not part of the wallet-follow/menu release. Do not describe stored recent trades as live signals or replay them on subscription/restart.
