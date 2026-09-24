@@ -28,3 +28,53 @@ function metrics(items){const g=el('div',undefined,'metric-grid');items.forEach(
 function tradeList(trades,target){if(!trades.length){target.append(empty('No observed trades','No qualifying wallet activity is available for this address in the current collection window.'));return;}trades.forEach(t=>{const row=el('div',undefined,'trade-item'),body=el('div',undefined,'body');body.append(nameButton(t.wallet,short(t.wallet),null,'wallet'),el('p',tokenName(t.mint)+' · '+when(t.timestamp)),el('span',t.verified?'Receipt verified':'Verification not established','label'));row.append(el('span',t.side==='sell'?'SELL':'BUY','badge '+(t.side==='sell'?'sell':'')),body,link('Receipt ↗',t.explorerUrl));target.append(row);});}
 async function detail(kind,address){if(!validAddress(address)){$('#feedback').textContent='Enter a valid Solana token address to inspect.';return;}state.detail={kind,address};const request=++state.detailRequest;const box=$('#detail-content');box.replaceChildren(el('h2','Loading dossier…'));box.firstChild.id='detail-title';if(!$('#detail').open)$('#detail').showModal();try{const d=await fetchJSON('/api/'+(kind==='wallet'?'wallet':'token')+'?address='+encodeURIComponent(address));if(request!==state.detailRequest)return;box.replaceChildren();const title=el('h2',kind==='wallet'?'Observed wallet':d.market?.symbol||'Token dossier');title.id='detail-title';box.append(title,el('p',address,'address'));const actions=el('div',undefined,'actions');actions.append(button('Copy address',async e=>{const target=e.currentTarget;try{await navigator.clipboard.writeText(address);target.textContent='Copied';}catch{const range=document.createRange();range.selectNodeContents(box.querySelector('.address'));getSelection().removeAllRanges();getSelection().addRange(range);}}));if(kind!=='wallet')actions.append(button(state.watchlist.includes(address)?'★ Remove watch':'☆ Watch token',e=>{watch(address);e.currentTarget.textContent=state.watchlist.includes(address)?'★ Remove watch':'☆ Watch token';}));actions.append(link('Solscan ↗','https://solscan.io/'+(kind==='wallet'?'account/':'token/')+address));if(d.market?.pairUrl)actions.append(link('Market ↗',d.market.pairUrl));box.append(actions);if(kind==='wallet')box.append(el('p',d.profile?.summary||'No wallet summary available in this retained sample.','wallet-summary'),metrics([['OBSERVED BUYS',d.profile?.buys??'—'],['OBSERVED SELLS',d.profile?.sells??'—'],['FIRST SEEN',when(d.profile?.firstSeen)],['LAST SEEN',when(d.profile?.lastSeen)],['OBSERVED SOL BOUGHT',d.profile?.observedSolBought??'—'],['OBSERVED SOL SOLD',d.profile?.observedSolSold??'—']]),el('p','SOL amounts are observed trade flow in a retained sample, not profit or a complete wallet history.','coverage'));else box.append(metrics([['PRICE',money(d.market?.priceUsd)],['MARKET CAP',money(d.market?.marketCap)],['LIQUIDITY',money(d.market?.liquidityUsd)]]));if(d.market)box.append(el('p','Price as of '+when(d.market.fetchedAt)+' · '+marketFreshness(d.market),'coverage'));box.append(el('p',d.coverage||'Bounded observations. Full history and cost basis are unavailable.','coverage'));if(d.error)box.append(el('p',d.error,'feedback'));box.append(el('h3','Observed activity'));tradeList(d.trades||[],box);}catch(e){if(request!==state.detailRequest)return;box.replaceChildren();const h=el('h2','Dossier unavailable');h.id='detail-title';box.append(h,el('p',e.message,'coverage'),button('Try again',()=>detail(kind,address)));}}
 $('#close-detail').addEventListener('click',()=>$('#detail').close());$('#detail').addEventListener('close',()=>{state.detail=null;state.detailRequest++;});$('#detail').addEventListener('click',e=>{if(e.target===$('#detail')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{state.page=b.dataset.page;$('#feedback').textContent='';render();}));document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{state.mode=b.dataset.mode;render();}));$('#search').addEventListener('input',e=>{state.query=e.target.value.trim();$('#feedback').textContent='';render();});$('#search-form').addEventListener('submit',e=>{e.preventDefault();detail('token',$('#search').value.trim());});$('#watch-filter').addEventListener('click',()=>{state.watchOnly=!state.watchOnly;render();});$('#sort').addEventListener('change',e=>{state.sort=e.target.value;render();});$('#refresh').addEventListener('click',refresh);setInterval(()=>{if(!document.hidden)refresh();},90000);refresh();
+
+// Decorative motion only. No market values or trading activity are synthesized.
+function initAmbientMotion(){
+ const hero=document.querySelector('.hero'),panel=document.querySelector('.schematic');
+ if(!hero||!panel)return;
+ const rain=document.createElement('canvas'),net=document.createElement('canvas');
+ rain.className='matrix-rain';net.className='network-motion';
+ for(const c of [rain,net])c.setAttribute('aria-hidden','true');
+ hero.prepend(rain);panel.querySelector('svg').after(net);
+ const rc=rain.getContext('2d'),nc=net.getContext('2d');if(!rc||!nc){rain.remove();net.remove();return;}
+ hero.classList.add('motion-ready');
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+ let visible=true,frame=0,last=0,time=0,rw=0,rh=0,nw=0,nh=0;
+ const chars='01{}<>/ABCDEF:;';
+ const nodes=Array.from({length:34},(_,i)=>({angle:i*2.39996,r:0.2+((i*17)%29)/40,phase:i*1.71}));
+ function size(c){const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);c.getContext('2d').setTransform(d,0,0,d,0,0);return [r.width,r.height];}
+ function resize(){[rw,rh]=size(rain);[nw,nh]=size(net);draw();}
+ function draw(){
+  rc.clearRect(0,0,rw,rh);rc.font='11px monospace';
+  for(let x=12,col=0;x<rw;x+=23,col++){
+   const speed=22+(col*13%38),head=((time*speed+col*137)%(rh+280))-40;
+   for(let k=0;k<17;k++){
+    const y=head-k*15;if(y<0||y>rh)continue;
+    rc.fillStyle=k===0?'rgba(155,255,198,.6)':`rgba(0,255,125,${(1-k/17)*.34})`;
+    rc.fillText(chars[(col*7+k*3+Math.floor(time*2))%chars.length],x,y);
+   }
+  }
+  nc.clearRect(0,0,nw,nh);const cx=nw/2,cy=nh/2,scale=Math.min(nw,nh)*.48;
+  nc.strokeStyle='#143629';nc.lineWidth=.6;
+  for(let r of [.38,.7,1]){nc.beginPath();nc.ellipse(cx,cy,scale*r,scale*r*.78,0,0,Math.PI*2);nc.stroke();}
+  const pos=nodes.map(n=>{const a=n.angle+time*.045;return [cx+Math.cos(a)*n.r*scale,cy+Math.sin(a)*n.r*scale*.79+Math.sin(time*.35+n.phase)*7];});
+  pos.forEach((p,i)=>{
+   const q=pos[(i+7)%pos.length];
+   nc.strokeStyle=i%3?'rgba(0,255,133,.16)':'rgba(179,138,255,.3)';nc.beginPath();nc.moveTo(...p);nc.lineTo(...q);nc.stroke();
+   if(i%3===0){const f=(time*.22+i*.13)%1;nc.fillStyle=i%2?'#b38aff':'#80ffbc';nc.beginPath();nc.arc(p[0]+(q[0]-p[0])*f,p[1]+(q[1]-p[1])*f,1.8,0,Math.PI*2);nc.fill();}
+   nc.fillStyle=i%7===0?'#b38aff':'#00e980';nc.beginPath();nc.arc(...p,i%7===0?3.5:1.6,0,Math.PI*2);nc.fill();
+  });
+  nc.strokeStyle='#00ff85';nc.lineWidth=1;nc.strokeRect(cx-14,cy-14,28,28);
+  nc.fillStyle='#020b07';nc.fillRect(cx-13,cy-13,26,26);nc.fillStyle='#d3ffe3';nc.font='11px monospace';nc.textAlign='center';nc.fillText('TN',cx,cy+4);
+  nc.font='8px monospace';nc.fillStyle='#719483';nc.fillText('WALLETS / TOKENS / CONNECTIONS',cx,nh-13);
+  rain.dataset.frame=String(Math.round(time*30));net.dataset.frame=rain.dataset.frame;
+ }
+ function tick(now){frame=0;if(document.hidden||!visible||reduced.matches)return;if(now-last>=33){time+=last?Math.min((now-last)/1000,.1):.033;last=now;draw();}frame=requestAnimationFrame(tick);}
+ function sync(){cancelAnimationFrame(frame);frame=0;last=0;hero.classList.toggle('motion-paused',document.hidden||!visible||reduced.matches);if(!document.hidden&&visible&&!reduced.matches)frame=requestAnimationFrame(tick);else draw();}
+ new ResizeObserver(resize).observe(hero);
+ new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync();},{rootMargin:'80px'}).observe(hero);
+ document.addEventListener('visibilitychange',sync);reduced.addEventListener('change',sync);
+ resize();sync();
+}
+initAmbientMotion();
