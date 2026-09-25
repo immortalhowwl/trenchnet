@@ -92,16 +92,6 @@ Open **http://127.0.0.1:8787**. The application runtime uses only the Python sta
 
 [Configuration, API, checks & deployment notes →](docs/SETUP.md)
 
-## What the evidence can — and cannot — tell you
-
-- **Bounded sample, not the whole chain.** Analytics use at most the latest 500 retained trades. Supported Pump bonding-curve events do not cover every Solana route or complete post-migration history.
-- **Observed activity, not returns.** No validated PnL, win rate, wallet balances, complete exits, ownership mapping or trader-quality ranking.
-- **Market context has selection bias.** Discovery includes DexScreener's paid boost listings; this is not a smart-money signal.
-- **Rules, not model inference.** Astra, Jev and other language models are not integrated into the application runtime. The mascot artwork is branding, not an integration claim.
-- **Read-only by design.** The application does not accept or move user funds, request private keys, sign transactions or execute trades.
-
-[Data sources, decoding rules & limitations →](docs/SETUP.md#data-and-evidence)
-
 ## Project guide
 
 | Resource | What you will find |
