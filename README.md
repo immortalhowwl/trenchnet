@@ -34,8 +34,6 @@ Browse market information, search a token address, keep a browser watchlist, and
 
 [![Radar — the live app's Fresh buys view with retained trades and transaction links](docs/media/radar.png)](https://trenchnet.app/#/radar/fresh)
 
-*Fresh is an observed-buy feed, not a list of newly launched tokens. Market listings are not endorsements.*
-
 ### 02 / Traders
 
 **Read the activity behind an address.**
@@ -43,8 +41,6 @@ Browse market information, search a token address, keep a browser watchlist, and
 Inspect observed buys, sells, tokens and timestamps. Open a wallet to see the transactions behind its sample summary, with SOL amounts where available.
 
 [![Traders — observed wallets, buy and sell counts, and sample summaries](docs/media/traders.png)](https://trenchnet.app/#/traders)
-
-*An activity list, not a profitability leaderboard. SOL totals are not PnL or complete wallet history.*
 
 ### 03 / Network
 
@@ -54,8 +50,6 @@ Choose a token, select one of its observed buyers, then inspect that wallet's re
 
 [![Network — token selector, observed buyers and the selected wallet's recorded trades](docs/media/network.png)](https://trenchnet.app/#/network)
 
-*The current hosted Network is a token-to-wallet investigation view, not a circular graph. Shared token activity does not establish shared ownership or coordination.*
-
 ### 04 / Journal
 
 **Keep the observation and its evidence together.**
@@ -63,8 +57,6 @@ Choose a token, select one of its observed buyers, then inspect that wallet's re
 Review deterministic `FIRST_SEEN`, `CO_BUY` and `SELL_OBSERVED` events, their supporting receipts, and strictly later observations for the same token within a one-hour window.
 
 [![Journal — rule-based observations with evidence links and later-activity context](docs/media/journal.png)](https://trenchnet.app/#/journal)
-
-*First seen means first in the retained sample, not token creation. Missing later records do not mean no activity. The journal is rule-based, not an LLM prediction.*
 
 ## Take the watchlist to Telegram
 
