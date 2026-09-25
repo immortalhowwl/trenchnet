@@ -1,6 +1,6 @@
 # TRENCHNET Telegram wallet alerts
 
-Release verified 2026-09-24: installed in the existing `trenchnet-bot.service` for https://t.me/trenchnetPF_bot, running with persistent preferences preserved. The full Python suite passed (41 tests). Telegram accepted one new-menu preview to the existing owner's private chat; bot identity, no webhook and command-menu readback were checked. Source was `partial` at verification, so no genuine trade-alert delivery is claimed. Feed/alert suppression on partial sources remains intentional.
+The dedicated [@trenchnetPF_bot](https://t.me/trenchnetPF_bot) is live as an independent service (process status checked 2026-09-25). The website and worker are deployed separately. Process health does not establish genuine trade-alert delivery: consent, freshness and source-quality gates still apply. Partial snapshots intentionally suppress the feed and alerts.
 
 ## Commands and consent
 
@@ -66,4 +66,4 @@ No server-side retention cleanup for subscriber state is implemented. Back up th
 
 No grouped-buy burst alerts, digest, trader ranking, paid subscription or automatic trading. `/follow` filters what the existing collector retained; it does NOT initiate comprehensive collection of an arbitrary wallet. Bounded attempt counts and synchronous I/O make this an initial low-volume worker, not a proven large-audience broadcaster. A chronically failing set of recipients can delay other recipients; operational monitoring and fair retry queues are a later scaling gate.
 
-Website hosting has its own agreed expiry and budget; running this bot does not extend them. Without a healthy site snapshot there are no alerts.
+Website and bot availability are independent. Without a healthy, fresh site snapshot there are no eligible alerts.

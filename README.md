@@ -1,89 +1,133 @@
+<div align="center">
+
 # TRENCHNET
 
-Работающий read-only прототип исследовательского терминала Solana/Pump для Logics.
+### Follow the wallets. Inspect the evidence.
 
-## Что работает
+**Solana / Pump research · Public observations · Transaction receipts**
 
-- Radar: публичная рыночная информация DexScreener, фильтры сделок/покупок/продаж, поиск по адресу, watchlist в браузере.
-- Traders: краткое описание наблюдаемого поведения, покупки/продажи, суммы SOL и первое/последнее событие в выборке, ссылки на транзакции. Суммы SOL не являются PnL.
-- Network: граф аккаунт ↔ токен; повторные пересечения покупок минимум по двум разным токенам, с переходами к кошелькам и evidence. Анализ ограничен 60 аккаунтами с наибольшим числом наблюдаемых покупок, выводятся до 30 пар.
-- Journal: воспроизводимые FIRST_SEEN / CO_BUY / SELL_OBSERVED и строго последующие события того же токена в пределах часа. Отсутствие дальнейших записей не означает отсутствие активности. Все расчёты по последним максимум 500 сохранённым сделкам.
-- Token/wallet drawers, Solscan links, JSON export, mobile layout.
-- SQLite, raw upstream receipts, bounded periodic collection. Application runtime uses only Python standard library.
+<a href="https://trenchnet.app"><strong>Open App ↗</strong></a> &nbsp; · &nbsp; <a href="https://t.me/trenchnetPF_bot"><strong>Telegram ↗</strong></a>
 
-## Важные ограничения
+<br>
 
-Это **не готовая система прибыльного автотрейдинга**. Нет подключения кошелька, приватных ключей, подписания или исполнения сделок.
-Astra и Jev **не подключены**; журнал использует детерминированные правила, не языковую модель.
-История ограничена выборкой; PnL, win rate, остатки, полные выходы, точный рейтинг и связность владельцев не вычисляются.
-Совместная покупка токена не доказывает сговор или разные человеческие личности.
-Метаданные рынка обнаруживаются в том числе через список оплаченных boosts DexScreener. Это не сигналы умных денег.
-Коллектор поддерживает Pump bonding-curve TradeEvent, не все маршруты Solana и не полный post-migration backfill.
-Декодер намеренно отклоняет транзакции с неуспешными внутренними вызовами или неполным стеком логов, даже когда внешний вызов завершился успешно.
-Public RPC может ограничивать запросы, пропускать неподдерживаемые версии или перестать отвечать. UI сохраняет предыдущую выборку и показывает состояние источника.
+<img src="docs/media/cover.png" alt="TRENCHNET — original helmeted mascot surrounded by a luminous network, on a black, white and cyan research-terminal cover" width="960">
 
-## Запуск
+[Explore the workspace](#four-views-one-research-trail) · [Quick start](#quick-start) · [Setup & data](docs/SETUP.md) · [Visual tour](docs/SHOWCASE.md)
 
-Требуется Python 3.11+; runtime без pip/npm.
+</div>
 
-```bash
+---
+
+TRENCHNET is a read-only research terminal for exploring a retained sample of Solana/Pump activity. Move from a token to its observed buyers, inspect a wallet's recorded trades, and follow the receipts behind each observation.
+
+No wallet connection. No signatures. No automatic trading.
+
+## Four views. One research trail.
+
+The tour below shows the **hosted app**, captured on September 25, 2026. These are real interface captures, not mockups. The source reported **partial collection**; that status remains visible. [Capture notes and source-version differences →](docs/SHOWCASE.md)
+
+### 01 / Radar
+
+**Start with what was actually observed.**
+
+Browse market information, search a token address, keep a browser watchlist, and switch between markets, signals, buys and sells. Open a transaction receipt instead of taking a label on trust.
+
+[![Radar — the live app's Fresh buys view with retained trades and transaction links](docs/media/radar.png)](https://trenchnet.app/#/radar/fresh)
+
+*Fresh is an observed-buy feed, not a list of newly launched tokens. Market listings are not endorsements.*
+
+### 02 / Traders
+
+**Read the activity behind an address.**
+
+Inspect observed buys, sells, tokens and timestamps. Open a wallet to see the transactions behind its sample summary, with SOL amounts where available.
+
+[![Traders — observed wallets, buy and sell counts, and sample summaries](docs/media/traders.png)](https://trenchnet.app/#/traders)
+
+*An activity list, not a profitability leaderboard. SOL totals are not PnL or complete wallet history.*
+
+### 03 / Network
+
+**Token → observed buyers → recorded trades.**
+
+Choose a token, select one of its observed buyers, then inspect that wallet's recorded trades across the current sample. Follow the transaction links or open the address on Solscan.
+
+[![Network — token selector, observed buyers and the selected wallet's recorded trades](docs/media/network.png)](https://trenchnet.app/#/network)
+
+*The current hosted Network is a token-to-wallet investigation view, not a circular graph. Shared token activity does not establish shared ownership or coordination.*
+
+### 04 / Journal
+
+**Keep the observation and its evidence together.**
+
+Review deterministic `FIRST_SEEN`, `CO_BUY` and `SELL_OBSERVED` events, their supporting receipts, and strictly later observations for the same token within a one-hour window.
+
+[![Journal — rule-based observations with evidence links and later-activity context](docs/media/journal.png)](https://trenchnet.app/#/journal)
+
+*First seen means first in the retained sample, not token creation. Missing later records do not mean no activity. The journal is rule-based, not an LLM prediction.*
+
+## Take the watchlist to Telegram
+
+The dedicated [@trenchnetPF_bot](https://t.me/trenchnetPF_bot) is live as a separate worker. Add a wallet, check source status, inspect the recent feed, and explicitly enable or pause alerts.
+
+- **Opt-in:** opening the bot or adding a wallet does not enable alerts.
+- **Source-aware:** stale or partial snapshots suppress the feed and alerts.
+- **Limited coverage:** following an address filters the existing sample; it does not start full wallet-history collection.
+
+[Commands, consent & delivery semantics →](docs/telegram-bot.md)
+
+## Quick start
+
+For the current hosted interface, [open trenchnet.app](https://trenchnet.app). To run the source in this repository, use **Python 3.11+**:
+
+```sh
+git clone https://github.com/immortalhowwl/trenchnet.git
+cd trenchnet
 python3 server.py
 ```
 
-Открыть http://127.0.0.1:8787. Коллектор стартует в фоне и повторяет цикл примерно каждые 90 секунд плюс время запроса.
+Open **http://127.0.0.1:8787**. The application runtime uses only the Python standard library; no pip or npm install is needed to start it. The collector runs in the background. A new database starts empty and fills only after successful upstream requests.
 
-Переменные окружения:
-- `HOST` (default `127.0.0.1`; Docker sets `0.0.0.0`), `PORT` (default `8787`)
-- `DB_PATH` (default `./data/trenchnet.sqlite`)
-- `COLLECT_INTERVAL` (default `90`, минимум `90`)
-- `COLLECT_ENABLED=0` отключает фоновые сетевые обращения
-- `TRUST_CLOUDFLARE=1` trusts Cloudflare client-IP headers only from a local proxy and requires loopback HOST; use only behind a local cloudflared connector
+> **Hosted app vs. source:** these screenshots show the newer hosted interface. The checked-in frontend still has the earlier presentation and network graph; this documentation update does not ship those application changes. The local server and collector remain runnable. See [version scope](docs/SHOWCASE.md#hosted-app-and-repository-scope).
 
-Сначала появится пустое состояние. Реальные данные появятся только после успешного обращения к публичным источникам. В архиве нет фиктивных рыночных данных, приватных ключей или live SQLite.
+[Configuration, API, checks & deployment notes →](docs/SETUP.md)
 
-## Проверки
+## What the evidence can — and cannot — tell you
 
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-npm ci
-node --test tests/*.test.mjs
-FRONTEND_URL=http://127.0.0.1:8787 CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node tests/frontend-browser.mjs
-FRONTEND_URL=http://127.0.0.1:8787 CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node tests/e2e.mjs
+- **Bounded sample, not the whole chain.** Analytics use at most the latest 500 retained trades. Supported Pump bonding-curve events do not cover every Solana route or complete post-migration history.
+- **Observed activity, not returns.** No validated PnL, win rate, wallet balances, complete exits, ownership mapping or trader-quality ranking.
+- **Market context has selection bias.** Discovery includes DexScreener's paid boost listings; this is not a smart-money signal.
+- **Rules, not model inference.** Astra, Jev and other language models are not integrated into the application runtime. The mascot artwork is branding, not an integration claim.
+- **Read-only by design.** The application does not accept or move user funds, request private keys, sign transactions or execute trades.
+
+[Data sources, decoding rules & limitations →](docs/SETUP.md#data-and-evidence)
+
+## Project guide
+
+| Resource | What you will find |
+| --- | --- |
+| [Setup & data](docs/SETUP.md) | Runtime, configuration, API, tests and data boundaries |
+| [Visual tour](docs/SHOWCASE.md) | Full-size captures, provenance and hosted/source differences |
+| [Telegram guide](docs/telegram-bot.md) | Commands, explicit consent, source gates and persistence |
+| [Notification scope](docs/bot-reference-scope.md) | Supported behavior, non-goals and safe self-hosting |
+| [Automated checks](https://github.com/immortalhowwl/trenchnet/actions/workflows/tests.yml) | Repository test workflow |
+
+```text
+web/              Browser interface
+server.py         Read-only HTTP API and application entry point
+collector.py      Bounded collection and upstream receipts
+analytics.py      Sample summaries, relationships and journal rules
+telegram_bot.py   Independent opt-in notification worker
+tests/            Python, JavaScript and browser checks
+docs/             Setup, evidence boundaries and visual tour
 ```
 
-Browser E2E checks require a running app and successful live collection. No mocked network rows are inserted into the app for browser checks. Unit fixtures are isolated in tests and never loaded into production.
-`e2e.mjs` uses system Chromium by default. Set `CHROMIUM_EXECUTABLE_PATH` to an installed Chromium binary. For `frontend-browser.mjs`, omit the variable if Playwright browsers are installed via `npx playwright install chromium`.
+---
 
-## Публикация
+<div align="center">
 
-Публичный адрес: **https://trenchnet.app**. Сервис размещён в Railway, данные находятся на persistent volume `/app/data`, DNS у Name.com. Dockerfile подготавливает права тома и запускает приложение от непривилегированного пользователя.
+**Observe. Connect. Verify.**
 
-Локальный `ops/budget_guard.py` предназначен для отдельного планировщика, а не контейнера приложения. Он читает приватный `data/hosting-budget.json`, проверяет расходы только указанного проекта и останавливает только указанный сервис при расходе $3.50, недоступном биллинге или окончании согласованного срока. Применённый срок запуска: до 25 сентября 2026, 02:50 UTC. Проверка каждые 15 минут. Это **не жёсткий лимит провайдера**: биллинг запаздывает; сохранённый том может тарифицироваться после остановки. База и код не удаляются.
+[Open TRENCHNET](https://trenchnet.app) &nbsp; · &nbsp; [Open Telegram](https://t.me/trenchnetPF_bot)
 
-Inference API в приложении отсутствует. Наличие ключа AI Gateway не включает запросы к моделям.
-Перед публичным массовым запуском нужны production HTTP server/reverse proxy, shared cache/rate limits, health monitoring, стабильный источник истории и наблюдаемый full-history backfill.
-
-## API
-
-- `GET /api/health`
-- `GET /api/snapshot`
-- `GET /api/token?address=<mint>`
-- `GET /api/wallet?address=<wallet>`
-- `GET /api/export`
-
-Все API read-only; пользовательские адреса проходят проверку base58/32-byte. Внешние URL не принимаются. Есть ограничение ответа upstream, таймауты, bounded cache/concurrency, заголовки CSP и запрет доступа к data/source-файлам через static server.
-
-## Telegram-уведомления
-
-Отдельный read-only worker: `telegram_bot.py`. Статус: реализация и локальные проверки; **не подключён к Telegram и не запущен** без отдельного токена TRENCHNET. Документация: [docs/telegram-bot.md](docs/telegram-bot.md). Сравнение с референсом и границы: [docs/bot-reference-scope.md](docs/bot-reference-scope.md).
-
-`ops/trenchnet-bot.service` — проверенный systemd-шаблон, не активированный сервис. Он не включает бота в существующий Docker-образ и не продлевает срок хостинга сайта.
-
-## Следующие интеграции
-
-1. Более полная история отслеживаемых кошельков и учёт себестоимости при достаточных данных.
-2. Историческая оценка сигналов до любых claims о доходности.
-
-Настройка Jev отложена пользователем; Astra и другие платные модели не входят в текущий релиз.
-
-Деньги пользователей приложение не принимает и не перемещает.
+</div>

@@ -10,19 +10,15 @@ Trade alerts require a healthy fresh source, verified supported event data and a
 
 No Jev, Astra, paid inference, wallet signatures, wallet connection or automatic trading. Other projects' Telegram credentials, workers and subscriber databases are not reused.
 
-## Established deployment
+## Service boundaries and self-hosting
 
-Dedicated bot: https://t.me/trenchnetPF_bot
+Public bot: https://t.me/trenchnetPF_bot. It is live as a separate worker, not part of the website container.
 
-- Existing systemd service: `trenchnet-bot.service`.
-- Installed source: `/opt/trenchnet-bot/telegram_bot.py`.
-- Root-owned credential: `/etc/trenchnet-bot.env`, mode 0600; never publish or print.
-- Persistent SQLite: `/var/lib/trenchnet-bot/notifications.sqlite`.
-- Independent source API: `https://trenchnet.app/api/snapshot`.
+For your own instance, use the `ops/trenchnet-bot.service` template and provide your own dedicated token, source location and persistent SQLite path. Store credentials outside the repository with restrictive file permissions. Do not reuse another bot's token or subscriber database.
 
-Before upgrades, verify bot identity, no webhook conflict and a single poller. Back up SQLite with its backup API, preserve preferences/cutoffs/delivery history/update offset, then restart only this dedicated worker. Never create a second getUpdates poller for a smoke test. Keep source deployment, process health, Telegram message acceptance and genuine trade-alert delivery as separate evidence levels.
+Before enabling a worker, verify bot identity, absence of a conflicting webhook and a single poller. Preserve preferences, cutoffs, delivery history and update offset during upgrades. Use SQLite's backup API for a running database; never start a second getUpdates poller merely to test an existing bot.
 
-Website hosting and the worker are separate services. Source outages or partial coverage are not cured by adding Telegram buttons. No new paid provider or hosting plan is provisioned by this bot UI update.
+Keep source availability, process health, Telegram message acceptance and genuine trade-alert delivery as separate evidence levels. Website hosting and the worker are separate services; a source outage or partial coverage is not fixed by adding Telegram buttons.
 
 ## Remaining product work
 
